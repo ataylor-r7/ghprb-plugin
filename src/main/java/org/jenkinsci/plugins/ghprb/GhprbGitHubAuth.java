@@ -181,6 +181,7 @@ public class GhprbGitHubAuth extends AbstractDescribableImpl<GhprbGitHubAuth> {
         }
 
         StandardCredentials credentials = Ghprb.lookupCredentials(context, credentialsId, serverAPIUrl);
+        LOGGER.log(Level.INFO, "CREDENTIALS FOR ID" + credentialsId + "ARE" + credentials);
         if (credentials == null) {
             LOGGER.log(Level.SEVERE, "Failed to look up credentials for context {0} using id: {1}",
                     new Object[] {contextName, credentialsId});
@@ -192,6 +193,7 @@ public class GhprbGitHubAuth extends AbstractDescribableImpl<GhprbGitHubAuth> {
             LOGGER.log(Level.FINEST, "Using OAuth token for context {0}", contextName);
             StringCredentials tokenCredentials = (StringCredentials) credentials;
             builder.withOAuthToken(tokenCredentials.getSecret().getPlainText());
+            LOGGER.log(Level.INFO, "CREDENTIALS PLAINTEXT ARE" + tokenCredentials.getSecret().getPlainText());
         } else {
             LOGGER.log(Level.SEVERE, "Unknown credential type for context {0} using id: {1}: {2}",
                     new Object[] {contextName, credentialsId, credentials.getClass().getName()});
@@ -215,10 +217,10 @@ public class GhprbGitHubAuth extends AbstractDescribableImpl<GhprbGitHubAuth> {
 
     public GitHub getConnection(Item context) throws IOException {
         synchronized (this) {
-            if (gh == null) {
-                buildConnection(context);
-            }
-
+            //if (gh == null) { I think we need to just rebuild this connection each time
+            buildConnection(context);
+            //}
+            LOGGER.log(Level.INFO, "BUILDING NEW CONNECTION using credentials id: " + credentialsId);
             return gh;
         }
     }

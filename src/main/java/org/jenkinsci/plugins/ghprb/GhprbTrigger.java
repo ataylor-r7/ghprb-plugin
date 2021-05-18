@@ -248,7 +248,6 @@ public class GhprbTrigger extends GhprbTriggerBackwardsCompatible {
 
     @SuppressWarnings("deprecation")
     private void initState() throws IOException {
-
         final GithubProjectProperty ghpp = super.job.getProperty(GithubProjectProperty.class);
         if (ghpp == null || ghpp.getProjectUrl() == null) {
             throw new IllegalStateException("A GitHub project url is required.");
@@ -304,7 +303,6 @@ public class GhprbTrigger extends GhprbTriggerBackwardsCompatible {
     public void start(Job<?, ?> project, boolean newInstance) {
         // We should always start the trigger, and handle cases where we don't run in the run function.
         super.start(project, newInstance);
-
         String name = project.getFullName();
 
         if (!project.isBuildable()) {
@@ -499,13 +497,11 @@ public class GhprbTrigger extends GhprbTriggerBackwardsCompatible {
     }
 
     public GhprbGitHubAuth getGitHubApiAuth() {
-        if (gitHubAuthId == null) {
-            for (GhprbGitHubAuth auth : getDescriptor().getGithubAuth()) {
-                gitHubAuthId = auth.getId();
-                getDescriptor().save();
-                return auth;
+        for (GhprbGitHubAuth auth : getDescriptor().getGithubAuth()) {
+            gitHubAuthId = auth.getId();
+            getDescriptor().save();
+            return auth;
             }
-        }
         return getDescriptor().getGitHubAuth(gitHubAuthId);
     }
 
@@ -703,8 +699,8 @@ public class GhprbTrigger extends GhprbTriggerBackwardsCompatible {
         return isActive;
     }
 
-    public GhprbRepository getRepository() {
-        if (this.repository == null && super.job != null && super.job.isBuildable()) {
+    public GhprbRepository getRepository() { // TRY ALWAYS DOING INIT STATE ON TRIGGERS???
+        if (super.job != null && super.job.isBuildable()) {
             try {
                 this.initState();
             } catch (IOException e) {
