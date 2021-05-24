@@ -22,6 +22,8 @@ import jenkins.model.Jenkins;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.plaincredentials.StringCredentials;
+import org.jenkinsci.plugins.github_branch_source.GitHubAppCredentials;
+import org.jenkinsci.plugins.github_branch_source.Connector;
 import org.kohsuke.github.GHAuthorization;
 import org.kohsuke.github.GHCommitState;
 import org.kohsuke.github.GHIssue;
@@ -181,19 +183,17 @@ public class GhprbGitHubAuth extends AbstractDescribableImpl<GhprbGitHubAuth> {
         }
 
         StandardCredentials credentials = Ghprb.lookupCredentials(context, credentialsId, serverAPIUrl);
-        LOGGER.log(Level.INFO, "CREDENTIALS FOR ID" + credentialsId + "ARE" + credentials);
+
         if (credentials == null) {
             LOGGER.log(Level.SEVERE, "Failed to look up credentials for context {0} using id: {1}",
                     new Object[] {contextName, credentialsId});
         } else if (credentials instanceof StandardUsernamePasswordCredentials) {
-            LOGGER.log(Level.FINEST, "Using username/password for context {0}", contextName);
             StandardUsernamePasswordCredentials upCredentials = (StandardUsernamePasswordCredentials) credentials;
             builder.withPassword(upCredentials.getUsername(), upCredentials.getPassword().getPlainText());
         } else if (credentials instanceof StringCredentials) {
             LOGGER.log(Level.FINEST, "Using OAuth token for context {0}", contextName);
             StringCredentials tokenCredentials = (StringCredentials) credentials;
             builder.withOAuthToken(tokenCredentials.getSecret().getPlainText());
-            LOGGER.log(Level.INFO, "CREDENTIALS PLAINTEXT ARE" + tokenCredentials.getSecret().getPlainText());
         } else {
             LOGGER.log(Level.SEVERE, "Unknown credential type for context {0} using id: {1}: {2}",
                     new Object[] {contextName, credentialsId, credentials.getClass().getName()});
@@ -203,15 +203,26 @@ public class GhprbGitHubAuth extends AbstractDescribableImpl<GhprbGitHubAuth> {
     }
 
     private void buildConnection(Item context) {
-        GitHubBuilder builder = getBuilder(context, serverAPIUrl, credentialsId);
-        if (builder == null) {
-            LOGGER.log(Level.SEVERE, "Unable to get builder using credentials: {0}", credentialsId);
-            return;
-        }
-        try {
-            gh = builder.build();
-        } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Unable to connect using credentials: " + credentialsId, e);
+        StandardCredentials credentials = Ghprb.lookupCredentials(context, credentialsId, serverAPIUrl);
+        if (credentials instanceof GitHubAppCredentials) {
+            LOGGER.log(Level.INFO, "Using GithubApp Credentials:" + credentialsId);
+            GitHubAppCredentials appCredentials = (GitHubAppCredentials) credentials;
+            try {
+                gh = Connector.connect(serverAPIUrl, appCredentials); 
+            } catch (IOException e) {
+                LOGGER.log(Level.SEVERE, "Unable to connect using credentials: " + credentialsId, e);
+            } 
+        } else {
+            GitHubBuilder builder = getBuilder(context, serverAPIUrl, credentialsId);
+            if (builder == null) {
+                LOGGER.log(Level.SEVERE, "Unable to get builder using credentials: {0}", credentialsId);
+                return;
+            }
+            try {
+                gh = builder.build();
+            } catch (IOException e) {
+                LOGGER.log(Level.SEVERE, "Unable to connect using credentials: " + credentialsId, e);
+            }
         }
     }
 
@@ -259,6 +270,7 @@ public class GhprbGitHubAuth extends AbstractDescribableImpl<GhprbGitHubAuth> {
 
             matchers.add(CredentialsMatchers.instanceOf(StandardUsernamePasswordCredentials.class));
             matchers.add(CredentialsMatchers.instanceOf(StringCredentials.class));
+            matchers.add(CredentialsMatchers.instanceOf(GitHubAppCredentials.class));
 
             List<StandardCredentials> credentials = CredentialsProvider.lookupCredentials(
                     StandardCredentials.class,
